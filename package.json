@@ -1,0 +1,26 @@
+{
+  "name": "cable-splice-planner",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "lint": "eslint packages apps --ext .ts,.tsx",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:property": "vitest run --config vitest.property.config.ts",
+    "test:e2e": "playwright test",
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter field-app dev"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=9"
+  }
+}
