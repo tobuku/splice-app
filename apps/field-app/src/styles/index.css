@@ -18,6 +18,23 @@
       --bg-primary: #fff;
     }
   }
+
+  /* Dark mode */
+  @media (prefers-color-scheme: dark) {
+    body {
+      @apply bg-slate-900 text-slate-100;
+    }
+  }
+}
+
+@layer utilities {
+  /* Safe area insets for mobile notches */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @layer components {

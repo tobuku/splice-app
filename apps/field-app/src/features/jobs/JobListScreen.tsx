@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Job } from '@splice/domain';
 import { db } from '../../persistence/db.js';
+import { DemoBanner } from './DemoBanner.js';
 
 export function JobListScreen() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -41,6 +42,7 @@ export function JobListScreen() {
 
   return (
     <div className="space-y-4">
+      <DemoBanner />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Jobs</h2>
         <button

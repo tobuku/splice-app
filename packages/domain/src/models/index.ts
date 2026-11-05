@@ -199,6 +199,96 @@ export interface Job {
   updatedAt: string;
 }
 
+// ── Element State Machine ──
+
+export type ElementState =
+  | 'unassigned'
+  | 'planned'
+  | 'reserved'
+  | 'express'
+  | 'damaged'
+  | 'abandoned'
+  | 'spliced'
+  | 'tested'
+  | 'verified';
+
+export type ElementCondition = 'good' | 'damaged' | 'unknown';
+
+export type ElementAssignment =
+  | 'unassigned'
+  | 'assigned'
+  | 'reserved'
+  | 'express'
+  | 'pass-through';
+
+export type WorkflowStatus =
+  | 'pending'
+  | 'in-progress'
+  | 'completed'
+  | 'verified'
+  | 'rejected';
+
+export interface CableElement {
+  cableId: string;
+  position: number;
+  elementState: ElementState;
+  condition: ElementCondition;
+  assignment: ElementAssignment;
+  workflowStatus: WorkflowStatus;
+  connectionId?: string;
+  notes?: string;
+  assignedSplicer?: string;
+}
+
+export interface AccountingSummary {
+  cableId: string;
+  totalElements: number;
+  byState: Record<ElementState, number>;
+  byAssignment: Record<ElementAssignment, number>;
+  byCondition: Record<ElementCondition, number>;
+  unresolvedCount: number;
+}
+
+// ── Auth & Roles ──
+
+export type UserRole = 'admin' | 'lead-splicer' | 'field-splicer' | 'viewer';
+
+export interface User {
+  id: string;
+  name: string;
+  role: UserRole;
+  pinHash: string;
+  email?: string;
+  phone?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: UserRole;
+  invitedAt: string;
+  acceptedAt?: string;
+}
+
+export type WorkAssignmentStatus = 'assigned' | 'in-progress' | 'completed' | 'verified';
+
+export interface WorkAssignment {
+  id: string;
+  projectId: string;
+  spliceCaseId: string;
+  userId: string;
+  assignedRangeStart: number;
+  assignedRangeEnd: number;
+  status: WorkAssignmentStatus;
+  assignedBy: string;
+  assignedAt: string;
+  completedAt?: string;
+  notes?: string;
+}
+
 // ── Audit ──
 
 export interface AuditEvent {

@@ -1,15 +1,16 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import type { Cable, ResolvedSplicePlan } from '@splice/domain';
 import { buildSplicePlan, renderText, renderDiagram, validateSplicePlan } from '@splice/domain';
-import { SpliceDiagram } from '@splice/diagram-renderer';
+import { InteractiveSpliceDiagram } from '@splice/diagram-renderer';
 import { exportPlan, type ExportFormat } from '@splice/export-engine';
 import { db } from '../../persistence/db.js';
 
 type ViewTab = 'schedule' | 'diagram' | 'issues';
 
 export function SplicePlanViewScreen() {
-  const { caseId } = useParams<{ jobId: string; caseId: string }>();
+  const { jobId, caseId } = useParams<{ jobId: string; caseId: string }>();
+  const navigate = useNavigate();
   const [plan, setPlan] = useState<ResolvedSplicePlan | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('schedule');
 
@@ -26,7 +27,6 @@ export function SplicePlanViewScreen() {
     const loadedCables = await Promise.all(cableIds.map(cid => db.cables.get(cid)));
     const validCables = loadedCables.filter((c): c is Cable => c !== undefined);
 
-    // Build the plan
     const result = buildSplicePlan({
       spliceCaseId: sc.id,
       operationType: sc.operationType,
@@ -36,7 +36,6 @@ export function SplicePlanViewScreen() {
       exposedSubset: sc.exposedSubset,
     });
 
-    // Run validation
     const extraIssues = validateSplicePlan(result);
     if (extraIssues.length > 0) {
       result.issues = [...result.issues, ...extraIssues];
@@ -83,6 +82,22 @@ export function SplicePlanViewScreen() {
           </p>
         </div>
         <span className={`status-${plan.status}`}>{plan.status}</span>
+      </div>
+
+      {/* Quick actions */}
+      <div className="flex gap-2">
+        <button
+          className="btn-primary flex-1 py-3 text-sm"
+          onClick={() => navigate(`/jobs/${jobId}/splice/${caseId}/work`)}
+        >
+          Start Field Work
+        </button>
+        <button
+          className="btn-secondary flex-1 py-3 text-sm"
+          onClick={() => navigate(`/jobs/${jobId}/splice/${caseId}/share`)}
+        >
+          Share Plan
+        </button>
       </div>
 
       {/* Tabs */}
@@ -158,11 +173,9 @@ export function SplicePlanViewScreen() {
         </div>
       )}
 
-      {/* Diagram View */}
+      {/* Diagram View — Interactive */}
       {activeTab === 'diagram' && diagram && (
-        <div className="card overflow-x-auto">
-          <SpliceDiagram model={diagram} />
-        </div>
+        <InteractiveSpliceDiagram model={diagram} />
       )}
 
       {/* Issues View */}

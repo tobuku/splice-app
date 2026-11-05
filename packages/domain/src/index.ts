@@ -25,3 +25,7 @@ export { renderDiagram } from './mapping/renderDiagram.js';
 // Validation
 export { validateSplicePlan } from './validation/validatePlan.js';
 export * from './validation/schemas.js';
+
+// Accounting
+export { buildAccountingSummary } from './accounting/accountElements.js';
+export { validateAccounting } from './accounting/validateAccounting.js';

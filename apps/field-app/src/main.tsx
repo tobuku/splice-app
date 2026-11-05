@@ -3,9 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './app/App.js';
 import { initProfiles } from './app/initProfiles.js';
+import { db } from './persistence/db.js';
+import { seedDemoData } from './persistence/seedDemoData.js';
 import './styles/index.css';
 
 initProfiles();
+seedDemoData(db).catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

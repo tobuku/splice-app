@@ -5,6 +5,9 @@ import type {
   SpliceCase,
   ResolvedSplicePlan,
   AuditEvent,
+  User,
+  ProjectMember,
+  WorkAssignment,
 } from '@splice/domain';
 
 export class SpliceDatabase extends Dexie {
@@ -13,6 +16,9 @@ export class SpliceDatabase extends Dexie {
   spliceCases!: Table<SpliceCase, string>;
   plans!: Table<ResolvedSplicePlan, string>;
   auditLog!: Table<AuditEvent, string>;
+  users!: Table<User, string>;
+  projectMembers!: Table<ProjectMember, string>;
+  workAssignments!: Table<WorkAssignment, string>;
 
   constructor() {
     super('CableSplicePlanner');
@@ -23,6 +29,17 @@ export class SpliceDatabase extends Dexie {
       spliceCases: 'id, jobId, operationType',
       plans: 'id, spliceCaseId, status',
       auditLog: 'id, timestamp, entityType, entityId',
+    });
+
+    this.version(2).stores({
+      jobs: 'id, status, updatedAt',
+      cables: 'id, media, sheathId',
+      spliceCases: 'id, jobId, operationType',
+      plans: 'id, spliceCaseId, status',
+      auditLog: 'id, timestamp, entityType, entityId',
+      users: 'id, name, role',
+      projectMembers: 'id, projectId, userId, [projectId+userId]',
+      workAssignments: 'id, projectId, spliceCaseId, userId, status, [spliceCaseId+userId]',
     });
 
     // Audit-log middleware: log every mutation

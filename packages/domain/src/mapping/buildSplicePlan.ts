@@ -64,26 +64,74 @@ function resolveEndpoints(
 ): { endpoints: ResolvedEndpoint[]; errors: ValidationIssue[] } {
   const context = makeCableContext(cable, cableEnd.segmentId ?? 'default');
   const profile = getProfileOrThrow(cable.countProfileId, cable.countProfileVersion);
+  const capacity = profile.totalCapacity(context);
+
+  // Guard: if capacity is 0 or range is empty, return an error immediately
+  if (capacity <= 0) {
+    return {
+      endpoints: [],
+      errors: [{
+        severity: 'error',
+        code: 'INVALID_CABLE',
+        message: `Cable ${cable.id} has zero or negative capacity (${capacity})`,
+        cableId: cable.id,
+        profileId: cable.countProfileId,
+      }],
+    };
+  }
+
+  // Clamp range to valid bounds before normalizing
+  const clampedStart = Math.max(1, Math.min(cableEnd.rangeStart, capacity));
+  const clampedEnd = Math.max(1, Math.min(cableEnd.rangeEnd, capacity));
+
+  // Collect out-of-range warnings
+  const rangeErrors: ValidationIssue[] = [];
+  if (cableEnd.rangeEnd > capacity) {
+    for (let pos = capacity + 1; pos <= cableEnd.rangeEnd; pos++) {
+      rangeErrors.push({
+        severity: 'error',
+        code: 'OUT_OF_RANGE',
+        message: `Position ${pos} exceeds cable capacity of ${capacity}`,
+        cableId: cable.id,
+        profileId: cable.countProfileId,
+        position: pos,
+      });
+    }
+  }
+  if (cableEnd.rangeStart < 1) {
+    rangeErrors.push({
+      severity: 'error',
+      code: 'INVALID_POSITION',
+      message: `Range start ${cableEnd.rangeStart} is less than 1`,
+      cableId: cable.id,
+      profileId: cable.countProfileId,
+      position: cableEnd.rangeStart,
+    });
+  }
 
   // Normalize positions based on orientation
   const startPos = normalizePhysicalPosition(
-    cableEnd.rangeStart, profile.totalCapacity(context), cable.orientation
+    clampedStart, capacity, cable.orientation
   );
   const endPos = normalizePhysicalPosition(
-    cableEnd.rangeEnd, profile.totalCapacity(context), cable.orientation
+    clampedEnd, capacity, cable.orientation
   );
 
-  const actualStart = Math.min(startPos, endPos);
-  const actualEnd = Math.max(startPos, endPos);
-
+  // Resolve in the normalized order (ascending or descending based on reversal)
   const result = resolveRange(
     cable.countProfileId,
     cable.countProfileVersion,
-    actualStart,
-    actualEnd,
+    Math.min(startPos, endPos),
+    Math.max(startPos, endPos),
     context,
   );
-  return { endpoints: result.resolved, errors: result.errors };
+
+  // If cable is reversed, reverse the endpoint order so pairing is physically correct
+  if (cable.orientation.reversed) {
+    result.resolved.reverse();
+  }
+
+  return { endpoints: result.resolved, errors: [...rangeErrors, ...result.errors] };
 }
 
 // ── Straight Splice ──

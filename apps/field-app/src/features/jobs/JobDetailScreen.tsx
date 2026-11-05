@@ -89,6 +89,15 @@ export function JobDetailScreen() {
         )}
       </section>
 
+      {/* Actions */}
+      <section>
+        <div className="flex gap-2">
+          <Link to={`/jobs/${jobId}/verify`} className="btn-secondary flex-1 text-center text-sm py-2">
+            Verify Prints
+          </Link>
+        </div>
+      </section>
+
       {/* Splice Cases Section */}
       <section>
         <div className="flex items-center justify-between mb-2">
