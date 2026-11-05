@@ -42,10 +42,11 @@ function makeSpliceCase(
   jobId: string,
   operationType: SpliceCase['operationType'],
   cableEnds: SpliceCase['cableEnds'],
+  caseSuffix = 'case',
 ): SpliceCase {
   const now = new Date().toISOString();
   return {
-    id: did(demo, 'case'),
+    id: did(demo, caseSuffix),
     jobId,
     operationType,
     cableEnds,
@@ -61,17 +62,18 @@ function makePlan(
   issues: ResolvedSplicePlan['issues'] = [],
   unassignedSource: ResolvedSplicePlan['unassignedSource'] = [],
   unassignedTarget: ResolvedSplicePlan['unassignedTarget'] = [],
+  planSuffix = 'plan',
 ): ResolvedSplicePlan {
   const now = new Date().toISOString();
   return {
-    id: did(demo, 'plan'),
+    id: did(demo, planSuffix),
     spliceCaseId: caseId,
     connections: [],
     unassignedSource,
     unassignedTarget,
     issues,
     sourceProfileVersions: {},
-    hash: did(demo, 'hash'),
+    hash: did(demo, planSuffix, 'hash'),
     status,
     createdAt: now,
     updatedAt: now,
@@ -193,6 +195,120 @@ function demoE() {
   return { jobs: [job], cables: [cableX, cableY], spliceCases: [spliceCase], plans: [plan] };
 }
 
+// ─── Demo F: Real Fiber Cutover — MH 4031 (from engineering prints) ───
+// Based on actual engineering print data. This demonstrates a fiber count
+// transfer/cutover at MH #4031, S Beretania St, Honolulu.
+// Counts FHNLL201,49-60 are being cut dead on one cable and energized on another.
+
+function demoF() {
+  const job = makeJob('f', 'Fiber Cutover — MH #4031, S Beretania St', 'MH #4031, S Beretania St, Honolulu');
+
+  // ─── Cable 1: FID# 200636960 — Existing 72-SM (cut dead on FHNLL201,49-60) ───
+  // FHNLL201,1-48 | (FHNLL201,49-60)FD49-60<PP> | FHNLL201,61-68 | FD69-72
+  const cable636960 = makeCable('f', '636960', 'fiber', 72, '200636960', 'A', '12F/tube');
+  cable636960.manufacturer = 'OFS';
+  cable636960.model = 'Microcable 72-SM';
+  cable636960.provenance = 'FID#200636960 (14), M#71005455-1, 4052ft. FHNLL201 counts 1-48 active, 49-60 to be CUT DEAD per splice instruction, 61-68 active, 69-72 FD.';
+
+  // ─── Cable 2: FID# 200827578 — New 72-SM (energize FHNLL201,49-60) ───
+  // HHNLL281,289-312 | HHNLL281,337-348 | THEOA,37-48 | (THEOA,49-60)(R)FHNLL201,49-60<PP> | THEOA,61-68 | FD69-72
+  const cable827578 = makeCable('f', '827578', 'fiber', 72, '200827578', 'Z', '12F/tube');
+  cable827578.manufacturer = 'OFS';
+  cable827578.model = 'Microcable 72-SM';
+  cable827578.provenance = 'FID#200827578 (18), M#71005455-1, 330ft. HHNLL281 counts 289-312 and 337-348, THEOA 37-48 and 61-68. Fibers 49-60 rerouted to carry FHNLL201,49-60 per splice instruction.';
+
+  // ─── Cable 3: FID# 200827576 — Adjacent 72-SM ───
+  // HHNLL281,289-312 | HHNLL281,337-348 | FD37-48 | (FD49-60)(R)FHNLL201,49-60<PP> | FD61-72
+  const cable827576 = makeCable('f', '827576', 'fiber', 72, '200827576', 'A', '12F/tube');
+  cable827576.manufacturer = 'OFS';
+  cable827576.model = 'Microcable 72-SM';
+  cable827576.provenance = 'FID#200827576 (18), M#71005455-1, 250ft. HHNLL281 counts 289-312 and 337-348. Fibers 49-60 pass-through for FHNLL201,49-60.';
+
+  // ─── Cable 4: FID# 201181876 — Pass-through 72-SM at MH 4031 ───
+  // FD1-24<PP> | HHNLL281,337-339<PP> | FD28-72<PP>
+  const cable181876 = makeCable('f', '181876', 'fiber', 72, '201181876', 'A', '12F/tube');
+  cable181876.manufacturer = 'OFS';
+  cable181876.model = 'Microcable 72-SM';
+  cable181876.provenance = 'FID#201181876 (PP), 3F015KF-0000, M#71005455-1, 1200ft. All fibers pass-through at MH 4031.';
+
+  // ─── Cable 5: FID# 200625508 — 216-SM Fortex on Kinau St ───
+  // HHNLL281,1-173 | FD174-180 | HHNLL281,181-197 | FD198-202 | (FD203-204)FHNLL201,49-50<PP> | HHNLL281,205-206 | (FD207-216)FHNLL201,51-60<PP>
+  const cable625508 = makeCable('f', '625508', 'fiber', 216, '200625508', 'Z', '12F/tube');
+  cable625508.manufacturer = 'OFS';
+  cable625508.model = 'Fortex 216-SM';
+  cable625508.provenance = 'FID#200625508 (14), M#100000057-1, 772ft, Kinau St P15. HHNLL281 counts 1-173, 181-197, 205-206. FHNLL201,49-50 at positions 203-204, FHNLL201,51-60 at positions 207-216.';
+
+  // ─── Splice Case 1: Cut dead & energize FHNLL201,49-60 at MH 4031 ───
+  // Cut dead fibers 49-60 on cable 200636960
+  // Energize fibers 49-60 on cable 200827578
+  // This is a straight splice of 12 fibers (the FHNLL201 counts being transferred)
+  const splice1 = makeSpliceCase('f', job.id, 'straight', [
+    { id: did('f', 'end', 's1-src'), cableId: cable636960.id, role: 'peer', rangeStart: 49, rangeEnd: 60 },
+    { id: did('f', 'end', 's1-tgt'), cableId: cable827578.id, role: 'peer', rangeStart: 49, rangeEnd: 60 },
+  ], 'case-splice1');
+
+  const plan1 = makePlan('f', splice1.id, 'needs-verification', [
+    {
+      severity: 'info',
+      code: 'CUTOVER_OPERATION',
+      message: 'SPLICE 1: Cut dead FHNLL201,49-60 on 200636960 and energize same counts on 200827578. This transfers 12 fiber counts from old cable to new cable at MH #4031, S Beretania St.',
+    },
+    {
+      severity: 'warning',
+      code: 'LIVE_CIRCUIT_AFFECTED',
+      message: 'FHNLL201 counts 49-60 are currently live on cable 200636960. Coordinate outage window before cutting.',
+      cableId: cable636960.id,
+      suggestedAction: 'Confirm outage authorization with NOC before performing Splice 1.',
+    },
+    {
+      severity: 'info',
+      code: 'PASS_THROUGH_CABLES',
+      message: 'Cables 200827576 and 201181876 have pass-through fibers at this location. Do not disturb.',
+    },
+    {
+      severity: 'info',
+      code: 'FIBER_ASSIGNMENT_DETAIL',
+      message: 'Cable 200636960 fiber assignments: FHNLL201 f1-48 (active, untouched), f49-60 (CUT DEAD), f61-68 (active, untouched), f69-72 (FD). Cable 200827578 fiber assignments: HHNLL281 f289-312 @pos1-24, HHNLL281 f337-348 @pos25-36, THEOA f37-48 @pos37-48, FHNLL201 f49-60 @pos49-60 (ENERGIZE), THEOA f61-68 @pos61-68, FD @pos69-72.',
+    },
+  ], [], [], 'plan-splice1');
+
+  // ─── Splice Case 2: Energize FHNLL201,49-60 on 216-SM at Kinau St ───
+  // Fibers 49-50 of FHNLL201 go to positions 203-204 of cable 200625508
+  // Fibers 51-60 of FHNLL201 go to positions 207-216 of cable 200625508
+  const splice2 = makeSpliceCase('f', job.id, 'remap', [
+    { id: did('f', 'end', 's2-src'), cableId: cable827578.id, role: 'peer', rangeStart: 49, rangeEnd: 60 },
+    { id: did('f', 'end', 's2-tgt'), cableId: cable625508.id, role: 'peer', rangeStart: 203, rangeEnd: 216 },
+  ], 'case-splice2');
+
+  const plan2 = makePlan('f', splice2.id, 'needs-verification', [
+    {
+      severity: 'info',
+      code: 'CUTOVER_OPERATION',
+      message: 'SPLICE 2: Energize FHNLL201,49-60 on 216-SM OFS Fortex (FID# 200625508) on Kinau St, P15.',
+    },
+    {
+      severity: 'warning',
+      code: 'NON_CONTIGUOUS_MAPPING',
+      message: 'Target positions on cable 200625508 are not contiguous: FHNLL201 f49-50 map to positions 203-204, but f51-60 map to positions 207-216 (positions 205-206 are HHNLL281 counts). Requires explicit crosswalk.',
+      cableId: cable625508.id,
+      suggestedAction: 'Use remap splice with crosswalk table: src49->tgt203, src50->tgt204, src51->tgt207, src52->tgt208 ... src60->tgt216.',
+    },
+    {
+      severity: 'warning',
+      code: 'CROSSWALK_REQUIRED',
+      message: 'This remap requires an explicit crosswalk table. The non-contiguous target positions mean a straight splice would assign fibers incorrectly.',
+      suggestedAction: 'Build or import the crosswalk mapping before approving this splice case.',
+    },
+  ], [], [], 'plan-splice2');
+
+  return {
+    jobs: [job],
+    cables: [cable636960, cable827578, cable827576, cable181876, cable625508],
+    spliceCases: [splice1, splice2],
+    plans: [plan1, plan2],
+  };
+}
+
 // ─── Seed orchestrator ───
 
 export async function seedDemoData(database: SpliceDatabase): Promise<void> {
@@ -200,7 +316,7 @@ export async function seedDemoData(database: SpliceDatabase): Promise<void> {
   const existing = await database.jobs.get(did('a', 'job'));
   if (existing) return;
 
-  const demos = [demoA(), demoB(), demoC(), demoD(), demoE()];
+  const demos = [demoA(), demoB(), demoC(), demoD(), demoE(), demoF()];
 
   await database.transaction(
     'rw',
